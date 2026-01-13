@@ -1,0 +1,20 @@
+# Build and run from current dir
+dotnet run
+
+# Build and run specific project from dir
+dotnet run --project <project_name>
+
+# Create solution file
+dotnet new sln -n <name>
+
+# Add project to solution file
+dotnet sln add <project_name>
+
+# Create new templated proect in current dir (Creates new dir for project)
+dotnet new console -n <project_name>
+
+# Create a standard gitignore
+dotnet new gitignore
+
+# Add new package (NuGet)
+dotnet add package <package_name>

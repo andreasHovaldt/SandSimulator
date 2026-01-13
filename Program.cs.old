@@ -1,0 +1,55 @@
+﻿using Raylib_cs;
+
+namespace SandSimulator;
+
+internal static class Program
+{
+    // STAThread is required if you deploy using NativeAOT on Windows - See https://github.com/raylib-cs/raylib-cs/issues/301
+    [System.STAThread]
+    public static void Main()
+    {
+        int width = 800;
+        int height = 480;
+
+        // Initilize color grid as jagged array and fill with white
+        Color[][] colorGrid = new Color[width][];
+        for (int i = 0; i < colorGrid.Length; i++)
+        {
+            colorGrid[i] = new Color[height];
+            Array.Fill(colorGrid[i], Color.White);
+        }
+
+        // Texture2D
+
+        // Initilize raylib window
+        Raylib.InitWindow(width: width, height: height, title: "Sand Simulator");
+        Raylib.SetTargetFPS(fps: 90);
+
+        // Run main simulation loop
+        while (!Raylib.WindowShouldClose())
+        {
+            Raylib.BeginDrawing();
+            // Raylib.ClearBackground(color: Color.White);
+
+            // Manual pixel drawing (probably very inefficient!)
+            for (int x = 0; x < colorGrid.Length; x++)
+            {
+                for (int y = 0; y < colorGrid[x].Length; y++)
+                {
+                    Raylib.DrawPixel(posX: x, posY: y, color: colorGrid[x][y]);
+                }
+            }
+
+            // Display runtime info
+            Raylib.DrawText("Sand Simulator", posX: 12, posY: 12, fontSize: 20, color: Color.Black);
+            Raylib.DrawText($"FPS: {Raylib.GetFPS():F0}", posX: 12, posY: 36, fontSize: 20, color: Color.Black);
+
+            // Console.WriteLine($"Window loop: {count++}");
+            // count++;
+
+            Raylib.EndDrawing();
+        }
+
+        Raylib.CloseWindow();
+    }
+}
