@@ -1,120 +1,98 @@
-/*******************************************************************************************
-*
-*   raylib [textures] example - Procedural images generation
-*
-*   This example has been created using raylib 1.8 (www.raylib.com)
-*   raylib is licensed under an unmodified zlib/libpng license (View raylib.h for details)
-*
-*   Copyright (c) 2O17 Wilhem Barbier (@nounoursheureux)
-*
-********************************************************************************************/
-
-using Raylib_cs;
-using static Raylib_cs.Raylib;
+﻿using Raylib_cs;
 
 namespace SandSimulator;
 
-public class Program
+internal static class Program
 {
-    public const int NumTextures = 6;
-
-    public static int Main()
+    private static Color[] GenWhiteNoise(Color[] array, int width, int height)
     {
-        // Initialization
-        //--------------------------------------------------------------------------------------
-        const int screenWidth = 800;
-        const int screenHeight = 450;
-
-        InitWindow(screenWidth, screenHeight, "raylib [textures] example - procedural images generation");
-
-        Image verticalGradient = GenImageGradientLinear(screenWidth, screenHeight, 0, Color.Red, Color.Blue);
-        Image horizontalGradient = GenImageGradientLinear(screenWidth, screenHeight, 90, Color.Red, Color.Blue);
-        Image radialGradient = GenImageGradientRadial(screenWidth, screenHeight, 0.0f, Color.White, Color.Black);
-        Image isChecked = GenImageChecked(screenWidth, screenHeight, 32, 32, Color.Red, Color.Blue);
-        Image whiteNoise = GenImageWhiteNoise(screenWidth, screenHeight, 0.5f);
-        Image cellular = GenImageCellular(screenWidth, screenHeight, 32);
-
-        Texture2D[] textures = new Texture2D[NumTextures];
-        textures[0] = LoadTextureFromImage(verticalGradient);
-        textures[1] = LoadTextureFromImage(horizontalGradient);
-        textures[2] = LoadTextureFromImage(radialGradient);
-        textures[3] = LoadTextureFromImage(isChecked);
-        textures[4] = LoadTextureFromImage(whiteNoise);
-        textures[5] = LoadTextureFromImage(cellular);
-
-        UnloadImage(verticalGradient);
-        UnloadImage(horizontalGradient);
-        UnloadImage(radialGradient);
-        UnloadImage(isChecked);
-        UnloadImage(whiteNoise);
-        UnloadImage(cellular);
-
-        int currentTexture = 0;
-
-        SetTargetFPS(60);
-        //---------------------------------------------------------------------------------------
-
-        // Main game loop
-        while (!WindowShouldClose())
+        Random rng = new Random();
+        for (int x = 0; x < width; x++)
         {
-            // Update
-            //----------------------------------------------------------------------------------
-            if (IsMouseButtonPressed(MouseButton.Left) || IsKeyPressed(KeyboardKey.Right))
+            for (int y = 0; y < height; y++)
             {
-                // Cycle between the textures
-                currentTexture = (currentTexture + 1) % NumTextures;
+                Color rngColor = rng.Next(0, 2) switch
+                {
+                    0 => Color.White,
+                    1 => Color.Black,
+                    _ => Color.Red,
+                };
+                array[y * width + x] = rngColor;
             }
-            //----------------------------------------------------------------------------------
+        }
+        return array;
+    }
 
-            // Draw
-            //----------------------------------------------------------------------------------
-            BeginDrawing();
-            ClearBackground(Color.RayWhite);
 
-            DrawTexture(textures[currentTexture], 0, 0, Color.White);
+    // STAThread is required if you deploy using NativeAOT on Windows - See https://github.com/raylib-cs/raylib-cs/issues/301
+    [System.STAThread]
+    public static void Main()
+    {
+        int windowWidth = 800;
+        int windowHeight = 480;
 
-            DrawRectangle(30, 400, 325, 30, ColorAlpha(Color.SkyBlue, 0.5f));
-            DrawRectangleLines(30, 400, 325, 30, ColorAlpha(Color.White, 0.5f));
-            DrawText("MOUSE LEFT BUTTON to CYCLE PROCEDURAL TEXTURES", 40, 410, 10, Color.White);
+        // Initilize a flat color array for texture data 
+        Color[] colorArray = new Color[windowWidth * windowHeight];
+        Array.Fill(colorArray, Color.Red);
 
-            switch (currentTexture)
-            {
-                case 0:
-                    DrawText("VERTICAL GRADIENT", 560, 10, 20, Color.RayWhite);
-                    break;
-                case 1:
-                    DrawText("HORIZONTAL GRADIENT", 540, 10, 20, Color.RayWhite);
-                    break;
-                case 2:
-                    DrawText("RADIAL GRADIENT", 580, 10, 20, Color.LightGray);
-                    break;
-                case 3:
-                    DrawText("CHECKED", 680, 10, 20, Color.RayWhite);
-                    break;
-                case 4:
-                    DrawText("WHITE NOISE", 640, 10, 20, Color.Red);
-                    break;
-                case 5:
-                    DrawText("CELLULAR", 670, 10, 20, Color.RayWhite);
-                    break;
-                default:
-                    break;
-            }
+        // for (int x = 0; x < windowWidth; x += 2)  // Every other column (0, 2, 4, ...)
+        // {
+        //     for (int y = 0; y < windowHeight; y++)
+        //     {
+        //         int idx = y * windowWidth + x;  // Row-major: y * width + x
+        //         colorArray[idx] = Color.White;
+        //     }
+        // }
 
-            EndDrawing();
-            //----------------------------------------------------------------------------------
+
+        // Color[][] colorGrid = new Color[windowWidth][];
+        // for (int i = 0; i < colorGrid.Length; i++)
+        // {
+        //     colorGrid[i] = new Color[windowHeight];
+        //     Array.Fill(colorGrid[i], Color.Red);
+        // }
+
+        // Color[,] colorArray2 = new Color[windowWidth, windowHeight];
+        // for (int i = 0; i < windowWidth; i++)
+        // {
+        //     for (int j = 0; j < windowHeight; j++)
+        //     {
+        //         colorArray2[i,j] = Color.White;
+        //     }
+        // }
+
+        // Initilize raylib window
+        Raylib.InitWindow(width: windowWidth, height: windowHeight, title: "Sand Simulator");
+        Raylib.SetTargetFPS(fps: 200);
+
+        // Initilize blank image and load as Texture2D
+        Image blankImage = Raylib.GenImageColor(width: windowWidth, height: windowHeight, color: Color.White);
+        Texture2D windowTexture = Raylib.LoadTextureFromImage(image: blankImage);
+        Raylib.UnloadImage(image: blankImage);
+
+
+        // Run main simulation loop
+        while (!Raylib.WindowShouldClose())
+        {
+            // Simulation logic
+            colorArray = GenWhiteNoise(colorArray, windowWidth, windowHeight);
+
+            // Update the windowTexture with the newest colorArray data
+            Raylib.UpdateTexture(texture: windowTexture, pixels: colorArray);
+
+            // Simulation vizualization
+            Raylib.BeginDrawing();
+            Raylib.DrawTexture(texture: windowTexture, posX: 0, posY: 0, tint: Color.White);
+
+            // Display runtime info
+            Raylib.DrawRectangle(10, 10, 154, 47, Color.LightGray);
+            Raylib.DrawText("Sand Simulator", posX: 12, posY: 12, fontSize: 20, color: Color.Black);
+            Raylib.DrawText($"FPS: {Raylib.GetFPS():F0}", posX: 12, posY: 36, fontSize: 20, color: Color.Black);
+
+            Raylib.EndDrawing();
         }
 
-        // De-Initialization
-        //--------------------------------------------------------------------------------------
-        for (int i = 0; i < textures.Length; i++)
-        {
-            UnloadTexture(textures[i]);
-        }
-
-        CloseWindow();
-        //--------------------------------------------------------------------------------------
-
-        return 0;
+        Raylib.UnloadTexture(texture: windowTexture);
+        Raylib.CloseWindow();
     }
 }
