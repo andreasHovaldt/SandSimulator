@@ -5,25 +5,6 @@ namespace SandSimulator;
 
 internal static class Program
 {
-    private static Color[] GenWhiteNoise(Color[] array, int width, int height)
-    {
-        Random rng = new Random();
-        for (int x = 0; x < width; x++)
-        {
-            for (int y = 0; y < height; y++)
-            {
-                Color rngColor = rng.Next(0, 2) switch
-                {
-                    0 => Color.White,
-                    1 => Color.Black,
-                    _ => Color.Red,
-                };
-                array[y * width + x] = rngColor;
-            }
-        }
-        return array;
-    }
-
 
     // STAThread is required if you deploy using NativeAOT on Windows - See https://github.com/raylib-cs/raylib-cs/issues/301
     [System.STAThread]
@@ -34,32 +15,27 @@ internal static class Program
         int windowHeight = 250;
         float windowScale = 4.0f;
 
-        // Initilize a flat color array for texture data 
-        Color[] colorArray = new Color[windowWidth * windowHeight];
-        Array.Fill(colorArray, Color.Red);
-
         // Initilize raylib window
         Raylib.InitWindow(width: (int)(windowWidth * windowScale), height: (int)(windowHeight * windowScale), title: "Sand Simulator");
         Raylib.SetTargetFPS(fps: 200);
 
-        // Initilize blank image and load as Texture2D
-        Image blankImage = Raylib.GenImageColor(width: windowWidth, height: windowHeight, color: Color.White);
-        Texture2D windowTexture = Raylib.LoadTextureFromImage(image: blankImage);
-        Raylib.UnloadImage(image: blankImage);
+        // Initilize simulator instance
+        Simulator simulator = new Simulator(width: windowWidth, height: windowHeight);
 
 
         // Run main simulation loop
         while (!Raylib.WindowShouldClose())
         {
             // Simulation logic
-            colorArray = GenWhiteNoise(colorArray, windowWidth, windowHeight);
+            simulator.GenWhiteNoise();
 
-            // Update the windowTexture with the newest colorArray data
-            Raylib.UpdateTexture(texture: windowTexture, pixels: colorArray);
+
+            // Update the texture with the newest colorArray data
+            simulator.UpdateTexture();
 
             // Simulation vizualization
             Raylib.BeginDrawing();
-            Raylib.DrawTextureEx(texture: windowTexture, position: new Vector2(0, 0), rotation: 0.0f, scale: windowScale, tint: Color.White);
+            Raylib.DrawTextureEx(texture: simulator.Texture, position: new Vector2(0, 0), rotation: 0.0f, scale: windowScale, tint: Color.White);
 
             // Display runtime info
             Raylib.DrawRectangle(10, 10, 154, 47, Color.LightGray);
@@ -69,7 +45,9 @@ internal static class Program
             Raylib.EndDrawing();
         }
 
-        Raylib.UnloadTexture(texture: windowTexture);
+        simulator.UnloadTexture();
         Raylib.CloseWindow();
     }
 }
+
+
