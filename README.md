@@ -24,5 +24,6 @@ dotnet run -c Release
 
 ## Controls
 
-- Left click: Spawn red sand
-- Right click: Spawn green sand
+- Left click: Spawn sand
+- Right click: Spawn water
+- Middle click: Spawn rock
