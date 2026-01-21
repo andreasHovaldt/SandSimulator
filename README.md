@@ -27,3 +27,5 @@ dotnet run -c Release
 - Left click: Spawn sand
 - Right click: Spawn water
 - Middle click: Spawn rock
+- C: Clear scene
+- B: Run benchmark
