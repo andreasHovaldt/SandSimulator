@@ -72,40 +72,45 @@ class Simulator
             //   times before a render, allowing a proper "falling" animation
             for (int y = this.height - 1; y >= 0; y--)
             {
-                foreach (SandType sandType in this.sandTypes)
+                // Get color once and look up sand type directly
+                Color currentColor = CheckPosColor(x, y);
+
+                // Skip background pixels immediately
+                if (currentColor.Equals(this.backgroundColor))
+                    continue;
+
+                // Look up sand type from dictionary, then skip if not a known sand type
+                SandType? sandType = TryGetSandType(currentColor);
+                if (sandType == null)
+                    continue;
+
+                // Check the allowed movements for the specific sand type
+                foreach ((int, int) newRelativePosition in sandType.GetMovementArray)
                 {
-                    // If a pixel matches the given color, check if it is able to move
-                    if (CheckPosColor(x, y).Equals(sandType.GetColor))
+                    (int, int) newTruePosition = (x + newRelativePosition.Item1, y + newRelativePosition.Item2);
+
+                    // Check if new pos is within bounds, if not, skip to next
+                    if (!CheckPosBounds(newTruePosition.Item1, newTruePosition.Item2))
+                        continue;
+
+                    // Get color of target pixel
+                    Color targetColor = CheckPosColor(newTruePosition.Item1, newTruePosition.Item2);
+
+                    // If can move to empty space
+                    if (targetColor.Equals(this.backgroundColor))
                     {
-                        // Check the allowed movements for the specific sand type
-                        foreach ((int, int) newRelativePosition in sandType.GetMovementArray)
-                        {
-                            (int, int) newTruePosition = (x + newRelativePosition.Item1, y + newRelativePosition.Item2);
+                        SetPosColor(x, y, this.backgroundColor);
+                        SetPosColor(newTruePosition.Item1, newTruePosition.Item2, sandType.GetColor);
+                        break;
+                    }
 
-                            // Check if new pos is within bounds, if not, skip to next
-                            if (!CheckPosBounds(newTruePosition.Item1, newTruePosition.Item2))
-                                continue;
-
-                            // Get color of target pixel
-                            Color targetColor = CheckPosColor(newTruePosition.Item1, newTruePosition.Item2);
-
-                            // If can move to empty space
-                            if (targetColor.Equals(this.backgroundColor))
-                            {
-                                SetPosColor(x, y, this.backgroundColor);
-                                SetPosColor(newTruePosition.Item1, newTruePosition.Item2, sandType.GetColor);
-                                break;
-                            }
-
-                            // If it can displace lighter sand type
-                            SandType? targetSandType = TryGetSandType(targetColor);
-                            if (targetSandType != null && targetSandType.GetWeight < sandType.GetWeight)
-                            {
-                                SetPosColor(x, y, targetColor);
-                                SetPosColor(newTruePosition.Item1, newTruePosition.Item2, sandType.GetColor);
-                                break;
-                            }
-                        }
+                    // If it can displace lighter sand type
+                    SandType? targetSandType = TryGetSandType(targetColor);
+                    if (targetSandType != null && targetSandType.GetWeight < sandType.GetWeight)
+                    {
+                        SetPosColor(x, y, targetColor);
+                        SetPosColor(newTruePosition.Item1, newTruePosition.Item2, sandType.GetColor);
+                        break;
                     }
                 }
             }
@@ -177,7 +182,7 @@ class Simulator
     public void UpdateTexture() => Raylib.UpdateTexture(texture: this.texture, pixels: this.colorArray);
     public void UnloadTexture() => Raylib.UnloadTexture(texture: this.texture);
 
-    public void SpawnBenchmarkSand(int count)
+    private void SpawnBenchmarkSand(int count)
     {
         for (int i = 0; i < count; i++)
         {
@@ -187,8 +192,12 @@ class Simulator
         }
     }
 
-    public (double totalMs, int frames) RunBenchmark(int frames)
+    public (double totalMs, int frames) RunBenchmark(int sandCount, int frames)
     {
+        // Spawn sand
+        SpawnBenchmarkSand(sandCount);
+
+        // Start timer and simulate for given frames
         var sw = Stopwatch.StartNew();
         for (int i = 0; i < frames; i++)
         {
@@ -197,7 +206,6 @@ class Simulator
             Raylib.BeginDrawing();
             Raylib.DrawTextureEx(texture: this.GetTexture, position: new Vector2(0, 0), rotation: 0.0f, scale: this.scale, tint: Color.White);
             Raylib.DrawText("! RUNNING BENCHMARK !", posX: (int)(this.width * scale / 5.7), posY: (int)(this.height * scale / 1.9), fontSize: (int)(20 * this.scale), color: Color.Red);
-            // Console.WriteLine($"posX: {(int)(this.width * scale / 4)}, posY: {(int)(this.height * scale / 1.9)}");
             Raylib.EndDrawing();
         }
         sw.Stop();

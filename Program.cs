@@ -32,9 +32,8 @@ internal static class Program
             // Press B to run benchmark
             if (Raylib.IsKeyPressed(KeyboardKey.B))
             {
-                simulator.SpawnBenchmarkSand(50000);
-                var (ms, frames) = simulator.RunBenchmark(500);
-                benchmarkResult = $"500 frames: {ms:F0}ms ({ms / frames:F2}ms/frame)";
+                var (ms, frames) = simulator.RunBenchmark(sandCount: 50000, frames: 500);
+                benchmarkResult = $"{frames} frames: {ms:F0}ms ({ms / frames:F2}ms/frame)";
                 Console.WriteLine(benchmarkResult);
             }
 
