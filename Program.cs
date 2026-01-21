@@ -20,14 +20,17 @@ internal static class Program
         Raylib.SetTargetFPS(fps: 200);
 
         // Initilize simulator instance
-        Simulator simulator = new Simulator(width: windowWidth, height: windowHeight);
+        Simulator simulator = new Simulator(width: windowWidth, height: windowHeight, scale: windowScale);
 
 
         // Run main simulation loop
         while (!Raylib.WindowShouldClose())
         {
             // Simulation logic
-            simulator.GenWhiteNoise();
+            simulator.MousePaint(color: Color.Red);
+            simulator.MousePaint(color: Color.Green, triggerButton: MouseButton.Right);
+            simulator.SimulateColorMovement(color: Color.Red);
+            simulator.SimulateColorMovement(color: Color.Green, diagonalStability: 5);
 
 
             // Update the texture with the newest colorArray data
