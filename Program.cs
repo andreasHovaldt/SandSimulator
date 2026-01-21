@@ -23,9 +23,28 @@ internal static class Program
         Simulator simulator = new Simulator(width: windowWidth, height: windowHeight, scale: windowScale);
         SandType[] sandTypes = simulator.GetSandTypes;
 
+        // Benchmark state
+        string benchmarkResult = "";
+
         // Run main simulation loop
         while (!Raylib.WindowShouldClose())
         {
+            // Press B to run benchmark
+            if (Raylib.IsKeyPressed(KeyboardKey.B))
+            {
+                simulator.SpawnBenchmarkSand(50000);
+                var (ms, frames) = simulator.RunBenchmark(500);
+                benchmarkResult = $"500 frames: {ms:F0}ms ({ms / frames:F2}ms/frame)";
+                Console.WriteLine(benchmarkResult);
+            }
+
+            // Press C to clear the screen
+            if (Raylib.IsKeyPressed(KeyboardKey.C))
+            {
+                Array.Fill(simulator.GetColorArray, Color.White);
+                benchmarkResult = "";
+            }
+
             // Simulation logic
             simulator.MousePaint(color: sandTypes[0].GetColor);
             simulator.MousePaint(color: sandTypes[1].GetColor, triggerButton: MouseButton.Right);
@@ -44,6 +63,11 @@ internal static class Program
             Raylib.DrawRectangle(10, 10, 154, 47, Color.LightGray);
             Raylib.DrawText("Sand Simulator", posX: 12, posY: 12, fontSize: 20, color: Color.Black);
             Raylib.DrawText($"FPS: {Raylib.GetFPS():F0}", posX: 12, posY: 36, fontSize: 20, color: Color.Black);
+            if (!string.IsNullOrEmpty(benchmarkResult))
+            {
+                Raylib.DrawRectangle(200, 10, (int)(200 * windowScale), (int)(12 * windowScale), Color.LightGray);
+                Raylib.DrawText(benchmarkResult, posX: 203, posY: 20, fontSize: (int)(10 * windowScale), color: Color.DarkGray);
+            }
 
             Raylib.EndDrawing();
         }

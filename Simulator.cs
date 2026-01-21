@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Diagnostics;
 using Raylib_cs;
 
 namespace SandSimulator;
@@ -10,6 +11,7 @@ class Simulator
     private readonly float scale;
     private readonly Color backgroundColor;
     private readonly SandType[] sandTypes;
+    private readonly Dictionary<Color, SandType> sandTypeLookup;
     private readonly Random rng = new Random();
     private Color[] colorArray;
     private Texture2D texture;
@@ -19,9 +21,9 @@ class Simulator
         this.width = width;
         this.height = height;
         this.sandTypes = [new YellowSand(), new BlueSand(), new GraySand()];
+        this.sandTypeLookup = this.sandTypes.ToDictionary(s => s.GetColor);
         this.scale = scale;
         this.backgroundColor = backgroundColor ?? Color.White; // Default value is white if none is passed
-
 
         // Initilize a flat color array for texture data
         this.colorArray = new Color[this.width * this.height];
@@ -167,14 +169,40 @@ class Simulator
     }
 
     private SandType? TryGetSandType(Color color)
+    // Uses a dictionary for faster matching of Color to sandType, if the color doesnt exist, null is returned
     {
-        foreach (SandType sandType in this.sandTypes)
-            if (sandType.GetColor.Equals(color)) return sandType;
-        return null;
+        return this.sandTypeLookup.TryGetValue(color, out var sandType) ? sandType : null;
     }
 
     public void UpdateTexture() => Raylib.UpdateTexture(texture: this.texture, pixels: this.colorArray);
     public void UnloadTexture() => Raylib.UnloadTexture(texture: this.texture);
+
+    public void SpawnBenchmarkSand(int count)
+    {
+        for (int i = 0; i < count; i++)
+        {
+            int x = rng.Next(0, width);
+            int y = rng.Next(0, height / 2); // Top half
+            SetPosColor(x, y, sandTypes[rng.Next(sandTypes.Length)].GetColor);
+        }
+    }
+
+    public (double totalMs, int frames) RunBenchmark(int frames)
+    {
+        var sw = Stopwatch.StartNew();
+        for (int i = 0; i < frames; i++)
+        {
+            SimulateScene();
+            UpdateTexture();
+            Raylib.BeginDrawing();
+            Raylib.DrawTextureEx(texture: this.GetTexture, position: new Vector2(0, 0), rotation: 0.0f, scale: this.scale, tint: Color.White);
+            Raylib.DrawText("! RUNNING BENCHMARK !", posX: (int)(this.width * scale / 5.7), posY: (int)(this.height * scale / 1.9), fontSize: (int)(20 * this.scale), color: Color.Red);
+            // Console.WriteLine($"posX: {(int)(this.width * scale / 4)}, posY: {(int)(this.height * scale / 1.9)}");
+            Raylib.EndDrawing();
+        }
+        sw.Stop();
+        return (sw.Elapsed.TotalMilliseconds, frames);
+    }
 
 
     public Color[] GetColorArray => this.colorArray;
