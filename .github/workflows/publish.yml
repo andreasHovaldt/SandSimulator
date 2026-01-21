@@ -3,7 +3,7 @@ name: Release Game
 on:
   push:
     tags:
-      - "v*" # Triggers only when you push a tag like v1.0, v2.3.1, etc.
+      - "v*" # Triggers only when a tag like v1.0, v2.3.1, etc. is pushed
 
 jobs:
   build-and-release:
@@ -18,31 +18,38 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: "10.0" # Matches your local version
+          dotnet-version: "10.0"
+
+      # --- 0. VERIFY BUILD ---
+      - name: Build and verify
+        run: dotnet build SandSimulator.csproj -c Release
 
       # --- 1. BUILD LINUX ---
       - name: Publish Linux
         run: |
-          dotnet publish -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o build/linux
-          # Zip specifically the files we discussed earlier (binary + library)
+          dotnet publish SandSimulator.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o build/linux
           cd build/linux
           zip -j ../../SandSimulator_Linux.zip SandSimulator libraylib.so
 
       # --- 2. BUILD WINDOWS ---
-      # (Dotnet can cross-compile for Windows even while running on Linux!)
       - name: Publish Windows
         run: |
-          dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o build/win
-          # Zip the Windows release
+          dotnet publish SandSimulator.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o build/win
           cd build/win
-          zip -j ../../SandSimulator_Windows.zip SandSimulator.exe
+          zip -j ../../SandSimulator_Windows.zip SandSimulator.exe raylib.dll
 
-      # --- 3. CREATE GITHUB RELEASE ---
+      # --- 3. GENERATE CHECKSUMS ---
+      - name: Generate checksums
+        run: sha256sum SandSimulator_Linux.zip SandSimulator_Windows.zip > checksums.txt
+
+      # --- 4. CREATE GITHUB RELEASE ---
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
+          name: "Sand Simulator ${{ github.ref_name }}"
           files: |
             SandSimulator_Linux.zip
             SandSimulator_Windows.zip
+            checksums.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
