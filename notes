@@ -18,3 +18,7 @@ dotnet new gitignore
 
 # Add new package (NuGet)
 dotnet add package <package_name>
+
+# Tag and build new release
+git tag v<version>
+git push origin v<version>
