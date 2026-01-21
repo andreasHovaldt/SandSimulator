@@ -1,0 +1,48 @@
+name: Release Game
+
+on:
+  push:
+    tags:
+      - "v*" # Triggers only when you push a tag like v1.0, v2.3.1, etc.
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Needed to create the release
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0" # Matches your local version
+
+      # --- 1. BUILD LINUX ---
+      - name: Publish Linux
+        run: |
+          dotnet publish -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o build/linux
+          # Zip specifically the files we discussed earlier (binary + library)
+          cd build/linux
+          zip -j ../../SandSimulator_Linux.zip SandSimulator libraylib.so
+
+      # --- 2. BUILD WINDOWS ---
+      # (Dotnet can cross-compile for Windows even while running on Linux!)
+      - name: Publish Windows
+        run: |
+          dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o build/win
+          # Zip the Windows release
+          cd build/win
+          zip -j ../../SandSimulator_Windows.zip SandSimulator.exe
+
+      # --- 3. CREATE GITHUB RELEASE ---
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            SandSimulator_Linux.zip
+            SandSimulator_Windows.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
