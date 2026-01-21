@@ -9,16 +9,18 @@ class SandType
     // Fields
     protected readonly int horizontalViscosity; // Protected allows children to access, but the calling object cannot access
     protected readonly int verticalMovementResistance;
+    protected readonly int weight;
     protected readonly Color color;
     // protected Random rng;
     protected readonly (int, int)[] movementArray;
 
     // Constructor
-    public SandType(Color color, int horizontalViscosity, int verticalMovementResistance)
+    public SandType(Color color, int horizontalViscosity, int verticalMovementResistance, int weight)
     {
         this.color = color;
         this.horizontalViscosity = horizontalViscosity;
         this.verticalMovementResistance = verticalMovementResistance;
+        this.weight = weight;
         // this.rng = new Random();
         this.movementArray = this.MovementArray();
         Console.WriteLine("Created new sand type!");
@@ -57,14 +59,15 @@ class SandType
     public Color GetColor => this.color;
     public int GetHorizontalViscosity => this.horizontalViscosity;
     public int GetVerticalMovementResistance => this.verticalMovementResistance;
+    public int GetWeight => this.weight;
     public (int, int)[] GetMovementArray => this.movementArray;
 }
 
 class BlueSand : SandType
 // Emulates water
 {
-    public BlueSand(int horizontalViscosity = 5, int verticalMovementResistance = 1)
-        : base(new Color(0, 121, 241, 255), horizontalViscosity, verticalMovementResistance) // Blue RGB values
+    public BlueSand(int horizontalViscosity = 5, int verticalMovementResistance = 1, int weight = 2)
+        : base(new Color(0, 121, 241, 255), horizontalViscosity, verticalMovementResistance, weight) // Blue RGB values
     {
         Console.WriteLine($"Created {this.GetType()} type!");
     }
@@ -73,8 +76,8 @@ class BlueSand : SandType
 class YellowSand : SandType
 // Emulates sand
 {
-    public YellowSand(int horizontalViscosity = 0, int verticalMovementResistance = 5)
-        : base(new Color(253, 249, 0, 255), horizontalViscosity, verticalMovementResistance) // Yellow RGB values
+    public YellowSand(int horizontalViscosity = 0, int verticalMovementResistance = 5, int weight = 5)
+        : base(new Color(253, 249, 0, 255), horizontalViscosity, verticalMovementResistance, weight) // Yellow RGB values
     {
         Console.WriteLine($"Created {this.GetType()} type!");
     }
@@ -83,8 +86,8 @@ class YellowSand : SandType
 class GraySand : SandType
 // Emulates static rock
 {
-    public GraySand(int horizontalViscosity = 0, int verticalMovementResistance = 0)
-        : base(new Color(130, 130, 130, 255), horizontalViscosity, verticalMovementResistance) // Gray RGB values
+    public GraySand(int horizontalViscosity = 0, int verticalMovementResistance = 0, int weight = 10)
+        : base(new Color(130, 130, 130, 255), horizontalViscosity, verticalMovementResistance, weight) // Gray RGB values
     {
         Console.WriteLine($"Created {this.GetType()} type!");
     }

@@ -51,6 +51,7 @@ class Simulator
     }
 
     private bool evenFrame = true;
+
     public void SimulateScene()
     {
         // Reverse direction every iteration
@@ -78,10 +79,28 @@ class Simulator
                         foreach ((int, int) newRelativePosition in sandType.GetMovementArray)
                         {
                             (int, int) newTruePosition = (x + newRelativePosition.Item1, y + newRelativePosition.Item2);
-                            if (CheckPosBounds(newTruePosition.Item1, newTruePosition.Item2) && CheckPosColor(newTruePosition.Item1, newTruePosition.Item2).Equals(this.backgroundColor))
+
+                            // Check if new pos is within bounds, if not, skip to next
+                            if (!CheckPosBounds(newTruePosition.Item1, newTruePosition.Item2))
+                                continue;
+
+                            // Get color of target pixel
+                            Color targetColor = CheckPosColor(newTruePosition.Item1, newTruePosition.Item2);
+
+                            // If can move to empty space
+                            if (targetColor.Equals(this.backgroundColor))
                             {
-                                SetPosColor(newTruePosition.Item1, newTruePosition.Item2, sandType.GetColor);
                                 SetPosColor(x, y, this.backgroundColor);
+                                SetPosColor(newTruePosition.Item1, newTruePosition.Item2, sandType.GetColor);
+                                break;
+                            }
+
+                            // If it can displace lighter sand type
+                            SandType? targetSandType = TryGetSandType(targetColor);
+                            if (targetSandType != null && targetSandType.GetWeight < sandType.GetWeight)
+                            {
+                                SetPosColor(x, y, targetColor);
+                                SetPosColor(newTruePosition.Item1, newTruePosition.Item2, sandType.GetColor);
                                 break;
                             }
                         }
@@ -96,6 +115,12 @@ class Simulator
     {
         (int trueMouseX, int trueMouseY) = TrueMousePositionInt();
 
+        // Safety check for making sure the mouse is within the window before the 'CheckPosColor' is called.
+        if (!CheckPosBounds(trueMouseX, trueMouseY))
+        {
+            return;
+        }
+
         if (Raylib.IsMouseButtonDown(triggerButton) && (allowOverwrite || CheckPosColor(trueMouseX, trueMouseY).Equals(this.backgroundColor)))
         {
             for (int xOffset = -brushSize; xOffset <= brushSize; xOffset++)
@@ -105,7 +130,7 @@ class Simulator
                     int xPos = trueMouseX + xOffset;
                     int yPos = trueMouseY + yOffset;
 
-                    if ((xPos >= 0) && (xPos < this.width) && (yPos >= 0) && (yPos < this.height))
+                    if (CheckPosBounds(xPos, yPos)) // Again safety check, the brush size might go beyond the window bounds
                     {
                         this.colorArray[yPos * this.width + xPos] = color;
                     }
@@ -126,10 +151,9 @@ class Simulator
         return ((int)Math.Round(mousePos.X), (int)Math.Round(mousePos.Y));
     }
 
-    private bool CheckPosBounds(int x, int y) // Could be made a bit more sleek by removing the if and directly returning the bool evaluation
+    private bool CheckPosBounds(int x, int y)
     {
-        if ((x >= 0) && (x < this.width) && (y >= 0) && (y < this.height)) return true;
-        else return false;
+        return (x >= 0) && (x < this.width) && (y >= 0) && (y < this.height);
     }
 
     private Color CheckPosColor(int x, int y)
@@ -140,6 +164,13 @@ class Simulator
     private void SetPosColor(int x, int y, Color color)
     {
         this.colorArray[(y * this.width) + x] = color;
+    }
+
+    private SandType? TryGetSandType(Color color)
+    {
+        foreach (SandType sandType in this.sandTypes)
+            if (sandType.GetColor.Equals(color)) return sandType;
+        return null;
     }
 
     public void UpdateTexture() => Raylib.UpdateTexture(texture: this.texture, pixels: this.colorArray);
