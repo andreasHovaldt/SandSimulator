@@ -14,10 +14,11 @@ internal static class Program
         int windowWidth = 400;
         int windowHeight = 250;
         float windowScale = 4.0f;
+        int targetFps = 60;
 
         // Initilize raylib window
         Raylib.InitWindow(width: (int)(windowWidth * windowScale), height: (int)(windowHeight * windowScale), title: "Sand Simulator");
-        Raylib.SetTargetFPS(fps: 60);
+        Raylib.SetTargetFPS(fps: targetFps);
 
         // Initilize simulator instance
         Simulator simulator = new Simulator(width: windowWidth, height: windowHeight, scale: windowScale);
@@ -32,22 +33,24 @@ internal static class Program
             // Press B to run benchmark
             if (Raylib.IsKeyPressed(KeyboardKey.B))
             {
+                Raylib.SetTargetFPS(fps: 999); // Unlock FPS for benchmark
                 var (ms, frames) = simulator.RunBenchmark(sandCount: 50000, frames: 500);
                 benchmarkResult = $"{frames} frames: {ms:F0}ms ({ms / frames:F2}ms/frame)";
                 Console.WriteLine(benchmarkResult);
+                Raylib.SetTargetFPS(fps: targetFps); // Set it back to previous value
             }
 
             // Press C to clear the screen
             if (Raylib.IsKeyPressed(KeyboardKey.C))
             {
-                Array.Fill(simulator.GetColorArray, Color.White);
+                Array.Fill(simulator.GetIdArray, 0);
                 benchmarkResult = "";
             }
 
             // Simulation logic
-            simulator.MousePaint(color: sandTypes[0].GetColor);
-            simulator.MousePaint(color: sandTypes[1].GetColor, triggerButton: MouseButton.Right);
-            simulator.MousePaint(color: sandTypes[2].GetColor, triggerButton: MouseButton.Middle);
+            simulator.MousePaint(sandID: sandTypes[0].GetID);
+            simulator.MousePaint(sandID: sandTypes[1].GetID, triggerButton: MouseButton.Right);
+            simulator.MousePaint(sandID: sandTypes[2].GetID, triggerButton: MouseButton.Middle);
             simulator.SimulateScene();
 
 

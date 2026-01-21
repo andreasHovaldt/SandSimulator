@@ -10,24 +10,36 @@ class Simulator
     private readonly int height;
     private readonly float scale;
     private readonly Color backgroundColor;
+    private readonly int backgroundID;
     private readonly SandType[] sandTypes;
-    private readonly Dictionary<Color, SandType> sandTypeLookup;
+    private readonly Dictionary<int, SandType> sandTypeLookupFromID;
+    private readonly Dictionary<int, Color> sandColorLookupFromID;
     private readonly Random rng = new Random();
     private Color[] colorArray;
+    private int[] idArray;
     private Texture2D texture;
 
     public Simulator(int width, int height, float scale, Color? backgroundColor = null)
     {
+        // Initilizing class fields
         this.width = width;
         this.height = height;
-        this.sandTypes = [new YellowSand(), new BlueSand(), new GraySand()];
-        this.sandTypeLookup = this.sandTypes.ToDictionary(s => s.GetColor);
         this.scale = scale;
+
+        this.sandTypes = [new YellowSand(id: 1), new BlueSand(id: 2), new GraySand(id: 3)];
+        this.sandTypeLookupFromID = this.sandTypes.ToDictionary(s => s.GetID);                   // (s => s.GetColor) == (s => s.GetColor, s => s)
+        this.sandColorLookupFromID = this.sandTypes.ToDictionary(s => s.GetID, s => s.GetColor); // (keySelection, valueSelector)
+
         this.backgroundColor = backgroundColor ?? Color.White; // Default value is white if none is passed
+        this.backgroundID = 0;
 
         // Initilize a flat color array for texture data
         this.colorArray = new Color[this.width * this.height];
         Array.Fill(this.colorArray, Color.White);
+
+        // Also a cell array which is used for the actual computation, since int comparison is more efficient than Color.Equal()
+        this.idArray = new int[this.width * this.height];
+        Array.Fill(this.idArray, 0);
 
         // Initilize texture using blank image loaded as Texture2D
         Image blankImage = Raylib.GenImageColor(width: this.width, height: this.height, color: Color.White);
@@ -73,16 +85,18 @@ class Simulator
             for (int y = this.height - 1; y >= 0; y--)
             {
                 // Get color once and look up sand type directly
-                Color currentColor = CheckPosColor(x, y);
+                int currentIdx = (y * this.width) + x; // TODO: Small optimization: Utilize this instead of it being calculated multiple times in some of the helper funcs
+                int currentID = this.idArray[currentIdx];
 
                 // Skip background pixels immediately
-                if (currentColor.Equals(this.backgroundColor))
+                if (currentID == this.backgroundID)
                     continue;
 
                 // Look up sand type from dictionary, then skip if not a known sand type
-                SandType? sandType = TryGetSandType(currentColor);
+                SandType? sandType = TryGetSandTypeFromID(currentID);
                 if (sandType == null)
                     continue;
+
 
                 // Check the allowed movements for the specific sand type
                 foreach ((int, int) newRelativePosition in sandType.GetMovementArray)
@@ -94,22 +108,22 @@ class Simulator
                         continue;
 
                     // Get color of target pixel
-                    Color targetColor = CheckPosColor(newTruePosition.Item1, newTruePosition.Item2);
+                    int targetID = CheckPosID(newTruePosition.Item1, newTruePosition.Item2);
 
                     // If can move to empty space
-                    if (targetColor.Equals(this.backgroundColor))
+                    if (targetID == this.backgroundID)
                     {
-                        SetPosColor(x, y, this.backgroundColor);
-                        SetPosColor(newTruePosition.Item1, newTruePosition.Item2, sandType.GetColor);
+                        SetPosID(x, y, this.backgroundID);
+                        SetPosID(newTruePosition.Item1, newTruePosition.Item2, currentID);
                         break;
                     }
 
                     // If it can displace lighter sand type
-                    SandType? targetSandType = TryGetSandType(targetColor);
+                    SandType? targetSandType = TryGetSandTypeFromID(targetID);
                     if (targetSandType != null && targetSandType.GetWeight < sandType.GetWeight)
                     {
-                        SetPosColor(x, y, targetColor);
-                        SetPosColor(newTruePosition.Item1, newTruePosition.Item2, sandType.GetColor);
+                        SetPosID(x, y, targetID);
+                        SetPosID(newTruePosition.Item1, newTruePosition.Item2, currentID);
                         break;
                     }
                 }
@@ -118,17 +132,17 @@ class Simulator
     }
 
 
-    public void MousePaint(Color color, int brushSize = 3, bool allowOverwrite = false, MouseButton triggerButton = MouseButton.Left)
+    public void MousePaint(int sandID, int brushSize = 3, bool allowOverwrite = false, MouseButton triggerButton = MouseButton.Left)
     {
         (int trueMouseX, int trueMouseY) = TrueMousePositionInt();
 
-        // Safety check for making sure the mouse is within the window before the 'CheckPosColor' is called.
+        // Safety check for making sure the mouse is within the window before the 'CheckPosID' is called.
         if (!CheckPosBounds(trueMouseX, trueMouseY))
         {
             return;
         }
 
-        if (Raylib.IsMouseButtonDown(triggerButton) && (allowOverwrite || CheckPosColor(trueMouseX, trueMouseY).Equals(this.backgroundColor)))
+        if (Raylib.IsMouseButtonDown(triggerButton) && (allowOverwrite || CheckPosID(trueMouseX, trueMouseY) == this.backgroundID))
         {
             for (int xOffset = -brushSize; xOffset <= brushSize; xOffset++)
             {
@@ -139,47 +153,62 @@ class Simulator
 
                     if (CheckPosBounds(xPos, yPos)) // Again safety check, the brush size might go beyond the window bounds
                     {
-                        this.colorArray[yPos * this.width + xPos] = color;
+                        this.idArray[yPos * this.width + xPos] = sandID;
                     }
                 }
             }
         }
     }
 
-    private Vector2 TrueMousePosition()
-    {
-        Vector2 mousePos = Raylib.GetMousePosition();
-        return mousePos / this.scale;
-    }
+    private Vector2 TrueMousePosition() => Raylib.GetMousePosition() / this.scale;
+    // Return the true mouse position within the idArray/colorArray as a Vector2
 
     private (int x, int y) TrueMousePositionInt()
+    // Return the true mouse position within the idArray/colorArray as an integer tuple
     {
         Vector2 mousePos = TrueMousePosition();
         return ((int)Math.Round(mousePos.X), (int)Math.Round(mousePos.Y));
     }
 
-    private bool CheckPosBounds(int x, int y)
+    private bool CheckPosBounds(int x, int y) => ((x >= 0) && (x < this.width) && (y >= 0) && (y < this.height));
+    // Check whether a given position is within the idArray/colorArray bounds
+
+    private Color CheckPosColor(int x, int y) => this.colorArray[(y * this.width) + x];
+    // Check the color of given position in colorArray
+
+    private int CheckPosID(int x, int y) => this.idArray[(y * this.width) + x];
+    // Chcek the ID of given position in idArray
+
+    private void SetPosColor(int x, int y, Color color) => this.colorArray[(y * this.width) + x] = color;
+    // Set color of given position in colorArray
+
+    private void SetPosID(int x, int y, int id) => this.idArray[(y * this.width) + x] = id;
+    // Set ID of given position in idArray
+
+    private SandType? TryGetSandTypeFromID(int id)
+    // Try tocConvert sand ID to sand type, returns null if the id cant be converted
     {
-        return (x >= 0) && (x < this.width) && (y >= 0) && (y < this.height);
+        return this.sandTypeLookupFromID.TryGetValue(id, out var sandType) ? sandType : null;
     }
 
-    private Color CheckPosColor(int x, int y)
+    private void UpdateColorArray()
+    // Updates the colorArray based on the idArray
     {
-        return this.colorArray[(y * this.width) + x];
+        for (int i = 0; i < this.idArray.Length; i++)
+        {
+            int id = this.idArray[i];
+            this.colorArray[i] = id == 0
+                ? this.backgroundColor
+                : this.sandColorLookupFromID.TryGetValue(id, out var color) ? color : this.backgroundColor;
+        }
+    }
+    public void UpdateTexture()
+    // Update the raylib texture with the current idArray
+    {
+        UpdateColorArray();
+        Raylib.UpdateTexture(texture: this.texture, pixels: this.colorArray);
     }
 
-    private void SetPosColor(int x, int y, Color color)
-    {
-        this.colorArray[(y * this.width) + x] = color;
-    }
-
-    private SandType? TryGetSandType(Color color)
-    // Uses a dictionary for faster matching of Color to sandType, if the color doesnt exist, null is returned
-    {
-        return this.sandTypeLookup.TryGetValue(color, out var sandType) ? sandType : null;
-    }
-
-    public void UpdateTexture() => Raylib.UpdateTexture(texture: this.texture, pixels: this.colorArray);
     public void UnloadTexture() => Raylib.UnloadTexture(texture: this.texture);
 
     private void SpawnBenchmarkSand(int count)
@@ -187,8 +216,8 @@ class Simulator
         for (int i = 0; i < count; i++)
         {
             int x = rng.Next(0, width);
-            int y = rng.Next(0, height / 2); // Top half
-            SetPosColor(x, y, sandTypes[rng.Next(sandTypes.Length)].GetColor);
+            int y = rng.Next(0, height / 2); // Spawn in top half so it also simulate falling sand
+            SetPosID(x, y, sandTypes[rng.Next(sandTypes.Length)].GetID);
         }
     }
 
@@ -214,6 +243,7 @@ class Simulator
 
 
     public Color[] GetColorArray => this.colorArray;
+    public int[] GetIdArray => this.idArray;
     public Texture2D GetTexture => this.texture;
     public SandType[] GetSandTypes => this.sandTypes;
 
