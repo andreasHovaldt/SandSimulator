@@ -1,6 +1,4 @@
 using System.Numerics;
-using System.Runtime.CompilerServices;
-using System.Xml.Linq;
 using Raylib_cs;
 
 namespace SandSimulator;
@@ -11,7 +9,8 @@ class Simulator
     private readonly int height;
     private readonly float scale;
     private readonly Color backgroundColor;
-    private Random rng = new Random();
+    private readonly SandType[] sandTypes;
+    private readonly Random rng = new Random();
     private Color[] colorArray;
     private Texture2D texture;
 
@@ -19,8 +18,10 @@ class Simulator
     {
         this.width = width;
         this.height = height;
+        this.sandTypes = [new YellowSand(), new BlueSand(), new GraySand()];
         this.scale = scale;
         this.backgroundColor = backgroundColor ?? Color.White; // Default value is white if none is passed
+
 
         // Initilize a flat color array for texture data
         this.colorArray = new Color[this.width * this.height];
@@ -50,10 +51,10 @@ class Simulator
     }
 
     private bool evenFrame = true;
-    public void SimulateColorMovement(Color color, int diagonalStability = 1)
+    public void SimulateScene()
     {
         // Reverse direction every iteration
-        this.evenFrame = !evenFrame;
+        this.evenFrame = !this.evenFrame;
 
         // Check which direction to check first (right/left)
         int xStart = evenFrame ? 0 : this.width - 1;
@@ -68,47 +69,28 @@ class Simulator
             //   times before a render, allowing a proper "falling" animation
             for (int y = this.height - 1; y >= 0; y--)
             {
-                // If a pixel matches the given color, check if it is able to move
-                if (CheckPosColor(x, y).Equals(color))
+                foreach (SandType sandType in this.sandTypes)
                 {
-                    CheckPixelForMovement(x, y, color, diagonalStability);
+                    // If a pixel matches the given color, check if it is able to move
+                    if (CheckPosColor(x, y).Equals(sandType.GetColor))
+                    {
+                        // Check the allowed movements for the specific sand type
+                        foreach ((int, int) newRelativePosition in sandType.GetMovementArray)
+                        {
+                            (int, int) newTruePosition = (x + newRelativePosition.Item1, y + newRelativePosition.Item2);
+                            if (CheckPosBounds(newTruePosition.Item1, newTruePosition.Item2) && CheckPosColor(newTruePosition.Item1, newTruePosition.Item2).Equals(this.backgroundColor))
+                            {
+                                SetPosColor(newTruePosition.Item1, newTruePosition.Item2, sandType.GetColor);
+                                SetPosColor(x, y, this.backgroundColor);
+                                break;
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 
-    private void CheckPixelForMovement(int x, int y, Color color, int diagonalStability = 1)
-    {
-        if (CheckPosBounds(x, y) && this.colorArray[(y * this.width) + x].Equals(color))
-        {
-            // NOTE: The top is 0, while the bottom is this.height (Inverted y-axis compared to the usual coordinate system)
-
-            // Check underneath position first (always preferred)
-            if (CheckPosBounds(x, y + 1) && CheckPosColor(x, y + 1).Equals(this.backgroundColor))
-            {
-                SetPosColor(x, y + 1, color); // Paint new position
-                SetPosColor(x, y, this.backgroundColor); // Paint old pos with background color
-            }
-            else
-            {
-                // Randomly decide which diagonal to check first
-                int direction = this.rng.Next(0, 2) == 0 ? 1 : -1; // 1 = right first, -1 = left first
-
-                // Check first diagonal direction
-                if (CheckPosBounds(x + direction, y + diagonalStability) && CheckPosColor(x + direction, y + diagonalStability).Equals(this.backgroundColor))
-                {
-                    SetPosColor(x + direction, y + diagonalStability, color);
-                    SetPosColor(x, y, this.backgroundColor);
-                }
-                // Check other diagonal direction
-                else if (CheckPosBounds(x - direction, y + diagonalStability) && CheckPosColor(x - direction, y + diagonalStability).Equals(this.backgroundColor))
-                {
-                    SetPosColor(x - direction, y + diagonalStability, color);
-                    SetPosColor(x, y, this.backgroundColor);
-                }
-            }
-        }
-    }
 
     public void MousePaint(Color color, int brushSize = 3, bool allowOverwrite = false, MouseButton triggerButton = MouseButton.Left)
     {
@@ -132,25 +114,6 @@ class Simulator
         }
     }
 
-    public void DisplayMousePosition()
-    {
-        (int trueMouseX, int trueMouseY) = TrueMousePositionInt();
-
-        for (int xOffset = -2; xOffset <= 2; xOffset++)
-        {
-            for (int yOffset = -2; yOffset <= 2; yOffset++)
-            {
-                int xPos = trueMouseX + xOffset;
-                int yPos = trueMouseY + yOffset;
-
-                if (CheckPosBounds(xPos, yPos))
-                {
-                    this.colorArray[yPos * this.width + xPos] = Color.Red;
-                }
-            }
-        }
-    }
-
     private Vector2 TrueMousePosition()
     {
         Vector2 mousePos = Raylib.GetMousePosition();
@@ -163,7 +126,7 @@ class Simulator
         return ((int)Math.Round(mousePos.X), (int)Math.Round(mousePos.Y));
     }
 
-    private bool CheckPosBounds(int x, int y)
+    private bool CheckPosBounds(int x, int y) // Could be made a bit more sleek by removing the if and directly returning the bool evaluation
     {
         if ((x >= 0) && (x < this.width) && (y >= 0) && (y < this.height)) return true;
         else return false;
@@ -183,19 +146,8 @@ class Simulator
     public void UnloadTexture() => Raylib.UnloadTexture(texture: this.texture);
 
 
-    public Color[] ColorArray => this.colorArray;
-    public Texture2D Texture => this.texture;
+    public Color[] GetColorArray => this.colorArray;
+    public Texture2D GetTexture => this.texture;
+    public SandType[] GetSandTypes => this.sandTypes;
 
 }
-
-
-// class Pixel
-// {
-//     public Pixel()
-//     {
-//         Console.WriteLine("Init pixel");
-//     }
-
-//     public ()
-
-// }

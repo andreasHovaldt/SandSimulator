@@ -17,20 +17,20 @@ internal static class Program
 
         // Initilize raylib window
         Raylib.InitWindow(width: (int)(windowWidth * windowScale), height: (int)(windowHeight * windowScale), title: "Sand Simulator");
-        Raylib.SetTargetFPS(fps: 200);
+        Raylib.SetTargetFPS(fps: 60);
 
         // Initilize simulator instance
         Simulator simulator = new Simulator(width: windowWidth, height: windowHeight, scale: windowScale);
-
+        SandType[] sandTypes = simulator.GetSandTypes;
 
         // Run main simulation loop
         while (!Raylib.WindowShouldClose())
         {
             // Simulation logic
-            simulator.MousePaint(color: Color.Red);
-            simulator.MousePaint(color: Color.Green, triggerButton: MouseButton.Right);
-            simulator.SimulateColorMovement(color: Color.Red);
-            simulator.SimulateColorMovement(color: Color.Green, diagonalStability: 5);
+            simulator.MousePaint(color: sandTypes[0].GetColor);
+            simulator.MousePaint(color: sandTypes[1].GetColor, triggerButton: MouseButton.Right);
+            simulator.MousePaint(color: sandTypes[2].GetColor, triggerButton: MouseButton.Middle);
+            simulator.SimulateScene();
 
 
             // Update the texture with the newest colorArray data
@@ -38,7 +38,7 @@ internal static class Program
 
             // Simulation vizualization
             Raylib.BeginDrawing();
-            Raylib.DrawTextureEx(texture: simulator.Texture, position: new Vector2(0, 0), rotation: 0.0f, scale: windowScale, tint: Color.White);
+            Raylib.DrawTextureEx(texture: simulator.GetTexture, position: new Vector2(0, 0), rotation: 0.0f, scale: windowScale, tint: Color.White);
 
             // Display runtime info
             Raylib.DrawRectangle(10, 10, 154, 47, Color.LightGray);
